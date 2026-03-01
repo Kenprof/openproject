@@ -8,7 +8,7 @@ import { registerInputCaptionStreamAction } from './input-caption-stream-action'
 import { addTurboGlobalListeners } from './turbo-global-listeners';
 import { applyTurboNavigationPatch } from './turbo-navigation-patch';
 import { debugLog, whenDebugging } from 'core-app/shared/helpers/debug_output';
-import { TURBO_EVENTS } from './constants';
+import { getTurboEvents } from './utils';
 import { StreamActions } from '@hotwired/turbo';
 import { addTurboAngularWrapper } from 'core-turbo/turbo-angular-wrapper';
 
@@ -20,9 +20,9 @@ Turbo.start();
 
 // Register logging of events
 whenDebugging(() => {
-  TURBO_EVENTS
+  getTurboEvents()
     .filter((name) => name !== 'turbo:before-stream-render')
-    .forEach((name:string) => {
+    .forEach((name) => {
     document.addEventListener(name, (event) => {
       debugLog(`[TURBO EVENT ${name}] %O`, event);
     });
