@@ -2037,6 +2037,8 @@ en:
         type: "Type"
         version: "Version"
         watcher: "Watcher"
+      work_package_associated_version:
+        kind: "Kind"
 
     errors:
       messages:
