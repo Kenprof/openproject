@@ -769,6 +769,7 @@ export default class PageController extends Controller {
   private serializeSettingsForm() {
     const queryForm = document.querySelector<HTMLFormElement>('#query_form')!;
     const formData = new FormData(queryForm);
+    this.syncActiveFilters(formData);
 
     ['rows', 'columns'].forEach((type) => {
       Array.from(document.querySelectorAll<HTMLElement>(`#group-by--${type} .group-by--selected-element`))
@@ -780,6 +781,142 @@ export default class PageController extends Controller {
     });
 
     return formData;
+  }
+
+  private syncActiveFilters(formData:FormData) {
+    formData.delete('fields[]');
+
+    this.visibleFilters().forEach((field) => {
+      formData.append('fields[]', field);
+      this.syncFilterOperator(formData, field);
+      this.syncFilterValues(formData, field);
+    });
+  }
+
+  private syncFilterOperator(formData:FormData, field:string) {
+    const name = `operators[${field}]`;
+    const operator = document.querySelector<HTMLSelectElement>(`[name="${name}"]`);
+
+    if (!operator) {
+      return;
+    }
+
+    formData.delete(name);
+    formData.append(name, operator.value);
+  }
+
+  private syncFilterValues(formData:FormData, field:string) {
+    const name = `values[${field}][]`;
+    const filter = document.querySelector<HTMLElement>(`#filter_${field}`);
+
+    formData.delete(name);
+    if (!filter) {
+      return;
+    }
+
+    const fields = Array.from(filter.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>('input, select, textarea'))
+      .filter((element) => element.name === name)
+      .filter((element) => !element.disabled);
+
+    const nonEmptyFields = fields.filter((element) => element.value !== '');
+    if (nonEmptyFields.length === 0) {
+      this.serializeFilterComponentValue(formData, filter, name);
+      return;
+    }
+
+    nonEmptyFields.forEach((element) => {
+      if (element instanceof HTMLSelectElement) {
+        const selectedOptions = Array.from(element.selectedOptions);
+
+        if (selectedOptions.length === 0) {
+          formData.append(name, element.value);
+          return;
+        }
+
+        selectedOptions.forEach((option) => {
+          formData.append(name, option.value);
+        });
+
+        return;
+      }
+
+      if ((element instanceof HTMLInputElement) && ['checkbox', 'radio'].includes(element.type) && !element.checked) {
+        return;
+      }
+
+      formData.append(name, element.value);
+    });
+  }
+
+  private serializeFilterComponentValue(formData:FormData, filter:HTMLElement, name:string) {
+    // Reporting filters embed Angular custom elements that may not materialize
+    // matching named inputs until the user interacts with them.
+    const datePicker = filter.querySelector<HTMLElement>('[data-name][data-value]');
+    const normalizedName = this.normalizeQuotedDatasetValue(datePicker?.dataset.name);
+    const dateValue = this.normalizeQuotedDatasetValue(datePicker?.dataset.value);
+
+    if (normalizedName === name && dateValue) {
+      formData.append(name, dateValue);
+      return;
+    }
+
+    const autocompleter = filter.querySelector<HTMLElement>('[data-input-name][data-model]');
+    const inputName = this.normalizeQuotedDatasetValue(autocompleter?.dataset.inputName);
+
+    if (inputName !== name.replace(/\[\]$/, '')) {
+      return;
+    }
+
+    const parsedModel = this.parseQuotedJson(autocompleter?.dataset.model);
+    if (!Array.isArray(parsedModel)) {
+      return;
+    }
+
+    parsedModel
+      .map((value) => this.autocompleterValueId(value))
+      .filter((value):value is string => typeof value === 'string' && value.length > 0)
+      .forEach((value) => {
+        formData.append(name, value);
+      });
+  }
+
+  private autocompleterValueId(value:unknown) {
+    if (!value || typeof value !== 'object' || !('id' in value)) {
+      return undefined;
+    }
+
+    const { id } = value as { id:unknown };
+    if (typeof id === 'string') {
+      return id;
+    }
+
+    if (typeof id === 'number') {
+      return String(id);
+    }
+
+    return undefined;
+  }
+
+  private normalizeQuotedDatasetValue(value?:string) {
+    if (!value) {
+      return value;
+    }
+
+    // AngularHelper serializes string inputs with `.to_json`, so string
+    // dataset values arrive wrapped in literal double quotes.
+    return value.replace(/^"+|"+$/g, '');
+  }
+
+  private parseQuotedJson(value?:string):unknown {
+    if (!value) {
+      return undefined;
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch {
+      return undefined;
+    }
   }
 
   private defaultFailureCallback = (error:unknown) => {
