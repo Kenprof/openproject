@@ -121,8 +121,10 @@ export default class PageController extends Controller {
 
   removeFilter(evt:MouseEvent) {
     evt.preventDefault();
-    const target = evt.target as HTMLElement;
-    const filterName = target.closest('li')?.getAttribute('data-filter-name');
+    const removeBox = evt.currentTarget as HTMLElement;
+    const filterName =
+      removeBox.querySelector<HTMLInputElement>('input[name="fields[]"]')?.value
+      ?? removeBox.closest('li')?.getAttribute('data-filter-name');
 
     if (filterName) {
       this.filters.remove_filter(filterName);
@@ -132,8 +134,14 @@ export default class PageController extends Controller {
   filterKeydown(evt:KeyboardEvent) {
     if (evt.key === 'Enter' || evt.key === ' ') {
       evt.preventDefault();
+      evt.stopPropagation();
 
-      const filter = (evt.target as HTMLElement).closest('li') as HTMLElement;
+      const removeBox = (evt.currentTarget as HTMLElement).closest<HTMLElement>('[id^="rm_box_"]');
+      const filter = removeBox?.closest('li');
+      if (!filter) {
+        return;
+      }
+
       const filterName = filter.dataset.filterName;
       const prevVisibleFilter = jQuery(filter)
         .prevAll(':visible')
