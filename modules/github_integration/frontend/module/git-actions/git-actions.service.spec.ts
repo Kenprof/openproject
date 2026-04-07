@@ -38,7 +38,7 @@ describe('GitActionsService', function() {
       id: '42',
       subject: "Find the question, or don't",
       description: {
-        raw: "I recently found the answer is 42. We'd need to compute the correct question."
+        raw: "I recently found\nthe answer is 42.\n\nWe'd need to compute\nthe correct question."
       },
       type: { name: 'User Story' },
       pathHelper: new PathHelperService()
@@ -58,17 +58,30 @@ describe('GitActionsService', function() {
     expect(service.commitMessage(wp)).toEqual(
       `[#42] Find the question, or don't
 
+I recently found
+the answer is 42.
+
+We'd need to compute
+the correct question.
+
 http://localhost:9876/wp/42`
     );
     expect(service.gitCommand(wp)).toEqual(
-      `git checkout -b 'user-story/42-find-the-question-or-don-t' && git commit --allow-empty -m '[#42] Find the question, or don'\\''t' -m 'http://localhost:9876/wp/42'`
+      `git checkout -b 'user-story/42-find-the-question-or-don-t' && git commit --allow-empty -m '[#42] Find the question, or don'\\''t' -m 'I recently found\nthe answer is 42.' -m 'We'\\''d need to compute\nthe correct question.' -m 'http://localhost:9876/wp/42'`
     );
   });
 
   it('shell-escapes output for the git-command', () => {
     const wp = createWorkPackage({ subject: "' && rm -rf / #" });
     expect(service.gitCommand(wp)).toEqual(
-      `git checkout -b 'user-story/42-and-and-rm-rf' && git commit --allow-empty -m '[#42] '\\'' && rm -rf / #' -m 'http://localhost:9876/wp/42'`
+      `git checkout -b 'user-story/42-and-and-rm-rf' && git commit --allow-empty -m '[#42] '\\'' && rm -rf / #' -m 'I recently found\nthe answer is 42.' -m 'We'\\''d need to compute\nthe correct question.' -m 'http://localhost:9876/wp/42'`
+    );
+  });
+
+  it('skips empty description', () => {
+    const wp = createWorkPackage({ description: {raw: ''} });
+    expect(service.gitCommand(wp)).toEqual(
+      `git checkout -b 'user-story/42-find-the-question-or-don-t' && git commit --allow-empty -m '[#42] Find the question, or don'\\''t' -m 'http://localhost:9876/wp/42'`
     );
   });
 });
