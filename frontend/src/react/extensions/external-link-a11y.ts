@@ -26,10 +26,10 @@
 // See COPYRIGHT and LICENSE files for more details.
 //++
 
-import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import type { Node as PmNode } from '@tiptap/pm/model';
+import { createExtension } from '@blocknote/core';
+import { Plugin, PluginKey } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
+import type { Node as PmNode } from 'prosemirror-model';
 import { isHrefExternal } from 'core-stimulus/helpers/external-link-helpers';
 
 const pluginKey = new PluginKey('externalLinkA11y');
@@ -52,7 +52,7 @@ function buildDecorations(doc:PmNode):DecorationSet {
 }
 
 /**
- * TipTap extension that adds `aria-describedby` to external links inside the
+ * BlockNote extension that adds `aria-describedby` to external links inside the
  * editor via ProseMirror Decorations.
  *
  * Decorations add DOM attributes without modifying the document model, so
@@ -68,30 +68,28 @@ function buildDecorations(doc:PmNode):DecorationSet {
  * opens in a new tab. It lives in the main layout (`base.html.erb`) and is
  * cloned into the BlockNote shadow DOM by `block-note-element.ts`.
  */
-export const ExternalLinkA11yExtension = Extension.create({
-  name: 'externalLinkA11y',
+export const ExternalLinkA11yExtension = createExtension({
+  key: 'externalLinkA11y',
 
-  addProseMirrorPlugins() {
-    return [
-      new Plugin({
-        key: pluginKey,
-        state: {
-          init(_, { doc }) {
-            return buildDecorations(doc);
-          },
-          apply(tr, oldDecos) {
-            if (tr.docChanged) {
-              return buildDecorations(tr.doc);
-            }
-            return oldDecos.map(tr.mapping, tr.doc);
-          },
+  prosemirrorPlugins: [
+    new Plugin({
+      key: pluginKey,
+      state: {
+        init(_, { doc }) {
+          return buildDecorations(doc);
         },
-        props: {
-          decorations(state) {
-            return pluginKey.getState(state) as DecorationSet;
-          },
+        apply(tr, oldDecos) {
+          if (tr.docChanged) {
+            return buildDecorations(tr.doc);
+          }
+          return oldDecos.map(tr.mapping, tr.doc);
         },
-      }),
-    ];
-  },
+      },
+      props: {
+        decorations(state) {
+          return pluginKey.getState(state) as DecorationSet;
+        },
+      },
+    }),
+  ],
 });

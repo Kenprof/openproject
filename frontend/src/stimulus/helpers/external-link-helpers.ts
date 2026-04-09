@@ -29,7 +29,7 @@
 /**
  * Shared utilities for external link handling. Used by both
  * ExternalLinksController (DOM rewriting for server-rendered pages) and
- * ProseMirrorExternalLinksController (click interception for BlockNote editors).
+ * BlockNote editor extensions (click interception and accessibility).
  */
 
 /**
@@ -85,8 +85,8 @@ export function isExternalLinkCandidate(link:HTMLAnchorElement) {
 /**
  * Builds the `/external_redirect` URL that the server uses for external link
  * capture. The ExternalLinksController rewrites hrefs directly; the
- * ProseMirrorExternalLinksController passes this URL to `window.open` on click
- * to avoid corrupting the ProseMirror document model.
+ * ExternalLinkCaptureExtension passes this URL to `window.open` on click
+ * to avoid corrupting the BlockNote/ProseMirror document model.
  */
 export function buildExternalRedirectUrl(href:string):string {
   const basePath = window.appBasePath ?? '';

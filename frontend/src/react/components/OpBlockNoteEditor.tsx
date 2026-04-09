@@ -105,12 +105,10 @@ export function OpBlockNoteEditor({
       },
       dictionary: localeDictionary,
       ...(attachmentsEnabled && { uploadFile }),
-      _tiptapOptions: {
-        extensions: [
-          ExternalLinkA11yExtension,
-          ...(captureExternalLinks ? [ExternalLinkCaptureExtension] : []),
-        ],
-      },
+      extensions: [
+        ExternalLinkA11yExtension,
+        ...(captureExternalLinks ? [ExternalLinkCaptureExtension] : []),
+      ],
     };
   }, [hocuspocusProvider, doc, activeUser, localeDictionary, attachmentsEnabled, uploadFile, captureExternalLinks]);
 
