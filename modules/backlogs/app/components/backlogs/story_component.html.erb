@@ -54,7 +54,7 @@ See COPYRIGHT and LICENSE files for more details.
     <%= render(
           Primer::Alpha::ActionMenu.new(
             menu_id: dom_target(story, :menu),
-            src: menu_backlogs_project_sprint_story_path(project, sprint, story),
+            src: menu_backlogs_project_sprint_story_path(project, sprint, story, **helpers.all_backlogs_params),
             anchor_align: :end,
             classes: "hide-when-print"
           )

@@ -129,6 +129,17 @@ RSpec.describe Backlogs::SprintComponent, type: :component do
         expect(story_row["data-drop-url"]).to end_with(move_project_sprint_story_path(project, sprint, story1))
       end
 
+      context "when params[:all] is true" do
+        before { vc_test_controller.params.merge!(all: "1") }
+
+        it "includes the all param on story drop URLs" do
+          render_component
+
+          story_row = page.find(".Box-row[id='work_package_#{story1.id}']")
+          expect(story_row["data-drop-url"]).to match(/all=1/)
+        end
+      end
+
       it "renders story rows with proper classes" do
         render_component
 

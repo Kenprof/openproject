@@ -146,6 +146,11 @@ module RbCommonHelper
     ActiveRecord::Type::Boolean.new.cast(params[:all]) || false
   end
 
+  # Optional query params for backlog URLs when showing all items (`?all=1`).
+  def all_backlogs_params
+    show_all_backlog ? { all: 1 } : {}
+  end
+
   private
 
   def work_package_status_for_id(id)

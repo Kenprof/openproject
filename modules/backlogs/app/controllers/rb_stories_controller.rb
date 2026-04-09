@@ -210,8 +210,10 @@ class RbStoriesController < RbApplicationController
   end
 
   def replace_sprint_component_via_turbo_stream(sprint:)
-    replace_via_turbo_stream(component: Backlogs::SprintComponent.new(sprint: sprint, project: @project),
-                             method: :morph)
+    replace_via_turbo_stream(
+      component: Backlogs::SprintComponent.new(sprint:, project: @project),
+      method: :morph
+    )
   end
 
   def load_story

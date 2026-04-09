@@ -103,7 +103,7 @@ class InboxController < RbApplicationController
   def replace_sprint_component_via_turbo_stream(sprint_id)
     sprint = Agile::Sprint.for_project(@project).visible.find(sprint_id)
     replace_via_turbo_stream(
-      component: Backlogs::SprintComponent.new(sprint: sprint, project: @project),
+      component: Backlogs::SprintComponent.new(sprint:, project: @project),
       method: :morph
     )
   end

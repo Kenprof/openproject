@@ -50,8 +50,10 @@ RSpec.describe Backlogs::InboxItemComponent, type: :component do
            position: 1)
   end
   let(:work_packages) { WorkPackage.where(id: work_package.id).order(Arel.sql(Story::ORDER)) }
+  let(:show_all_backlog) { false }
 
   before do
+    vc_test_controller.params[:all] = "1" if show_all_backlog
     render_inline(
       Backlogs::InboxComponent.new(
         work_packages:,
@@ -95,6 +97,18 @@ RSpec.describe Backlogs::InboxItemComponent, type: :component do
     it "applies the correct row CSS classes" do
       expect(row[:class]).to include("Box-row--hover-blue", "Box-row--focus-gray",
                                      "Box-row--clickable", "Box-row--draggable")
+    end
+  end
+
+  describe "with show_all_backlog true" do
+    let(:show_all_backlog) { true }
+
+    it "adds the all query to drag, split view, and menu fragment URLs", :aggregate_failures do
+      row = page.find(".Box-row#work_package_#{work_package.id}")
+      expect(row["data-drop-url"]).to match(/all=1/)
+      expect(row["data-backlogs--story-split-url-value"]).to match(/all=1/)
+      src = page.find("include-fragment", visible: :all)["src"]
+      expect(src).to match(/all=1/)
     end
   end
 end

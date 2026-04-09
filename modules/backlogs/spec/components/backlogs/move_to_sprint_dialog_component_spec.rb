@@ -52,6 +52,16 @@ RSpec.describe Backlogs::MoveToSprintDialogComponent, type: :component do
     expect(page).to have_css("form[action='#{move_path}'] input[name='_method'][value='put']", visible: :all)
   end
 
+  context "when params[:all] is true" do
+    before { vc_test_controller.params.merge!(all: "1") }
+
+    it "submits the move form with the all query preserved" do
+      render_component
+
+      expect(page).to have_css("form[action*='all=1']", visible: :all)
+    end
+  end
+
   it "renders Cancel and Save buttons" do
     render_component
 

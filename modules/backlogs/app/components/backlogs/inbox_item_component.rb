@@ -61,20 +61,36 @@ module Backlogs
       {
         id: dom_id(work_package),
         classes: "Box-row--hover-blue Box-row--focus-gray Box-row--clickable Box-row--draggable",
-        data: {
-          draggable_id: work_package.id,
-          draggable_type: "story",
-          drop_url: move_project_inbox_path(project, work_package),
-          story: true,
-          controller: "backlogs--story",
-          backlogs__story_id_value: work_package.id,
-          backlogs__story_split_url_value: details_backlogs_project_backlogs_path(project, work_package),
-          backlogs__story_full_url_value: work_package_path(work_package),
-          backlogs__story_selected_class: "Box-row--blue",
-          test_selector: card_test_selector
-        },
+        data: data_attributes,
         tabindex: 0
       }
+    end
+
+    def data_attributes
+      {
+        draggable_id: work_package.id,
+        draggable_type: "story",
+        drop_url:,
+        story: true,
+        controller: "backlogs--story",
+        backlogs__story_id_value: work_package.id,
+        backlogs__story_split_url_value: split_url,
+        backlogs__story_full_url_value: full_url,
+        backlogs__story_selected_class: "Box-row--blue",
+        test_selector: card_test_selector
+      }
+    end
+
+    def drop_url
+      move_project_inbox_path(project, work_package, **helpers.all_backlogs_params)
+    end
+
+    def split_url
+      details_backlogs_project_backlogs_path(project, work_package, **helpers.all_backlogs_params)
+    end
+
+    def full_url
+      work_package_path(work_package)
     end
 
     def card_test_selector

@@ -355,6 +355,28 @@ RSpec.describe RbStoriesController do
         expect(story_in_agile_sprint.reload.sprint).to be_nil
         expect(story_in_agile_sprint.reload.position).to eq(2)
       end
+
+      context "when all=1 with an inbox over the pagination threshold" do
+        before do
+          stub_const("Backlogs::InboxComponent::PAGINATION_THRESHOLD", 3)
+          create_list(:work_package, 4, project:, status:)
+        end
+
+        it "replaces the inbox without a show-more row in the stream" do
+          put :move, params: {
+                       project_id: project.id,
+                       sprint_id: agile_sprint.id,
+                       id: story_in_agile_sprint.id,
+                       target_id: "inbox",
+                       prev_id: existing_inbox_item.id,
+                       all: "1"
+                     },
+                     format: :turbo_stream
+
+          expect(response).to be_successful
+          expect(response.body).not_to include("inbox-more-row-#{project.id}")
+        end
+      end
     end
 
     context "when service call fails" do
@@ -395,6 +417,19 @@ RSpec.describe RbStoriesController do
       subject
       expect(response).to have_http_status :ok
       expect(response.body).to include(I18n.t(:"js.button_open_details"))
+    end
+
+    context "when all=1 is in params" do
+      subject do
+        get :menu,
+            params: { project_id: project.id, sprint_id: version_sprint.id, id: story.id, all: "1" },
+            format: :html
+      end
+
+      it "embeds the all query in deferred action URLs" do
+        subject
+        expect(response.body).to match(/all=1/)
+      end
     end
 
     context "with a user lacking project permission" do
