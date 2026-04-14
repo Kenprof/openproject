@@ -36,12 +36,14 @@ class RbStoriesController < RbApplicationController
   # Deferred ActionMenu items (Primer include-fragment).
   def menu
     max_position = @allowed_stories.maximum(:position) || 0
+    open_sprints_exist = Agile::Sprint.for_project(@project).visible.not_completed.many?
 
     render(Backlogs::StoryMenuListComponent.new(
              story: @story,
              sprint: @sprint,
              project: @project,
              max_position:,
+             open_sprints_exist:,
              current_user:
            ),
            layout: false)
@@ -87,6 +89,14 @@ class RbStoriesController < RbApplicationController
     end
 
     respond_with_turbo_streams
+  end
+
+  def move_to_sprint_dialog
+    respond_with_dialog Backlogs::MoveToSprintDialogComponent.new(
+      work_package: @work_package,
+      project: @project,
+      move_action: move_project_sprint_story_path(@project, @sprint, @story)
+    )
   end
 
   def reorder

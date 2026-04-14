@@ -34,15 +34,16 @@ module Backlogs
   class StoryMenuListComponent < ApplicationComponent
     include OpPrimer::ComponentHelpers
 
-    attr_reader :story, :sprint, :project, :max_position, :current_user
+    attr_reader :story, :sprint, :project, :max_position, :current_user, :open_sprints_exist
 
-    def initialize(story:, sprint:, project:, max_position:, current_user: User.current)
+    def initialize(story:, sprint:, project:, max_position:, open_sprints_exist:, current_user: User.current)
       super()
 
       @story = story
       @sprint = sprint
       @project = project
       @max_position = max_position
+      @open_sprints_exist = open_sprints_exist
       @current_user = current_user
     end
 
@@ -59,6 +60,14 @@ module Backlogs
 
     def allowed_to_manage_sprint_items?
       current_user.allowed_in_project?(:manage_sprint_items, project)
+    end
+
+    def show_move_to_sprint?
+      allowed_to_manage_sprint_items? && open_sprints_exist
+    end
+
+    def show_move_submenu?
+      show_move_items? || show_move_to_sprint?
     end
 
     def build_move_menu(menu)

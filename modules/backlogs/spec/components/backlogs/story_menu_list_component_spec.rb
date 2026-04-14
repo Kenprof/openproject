@@ -60,9 +60,14 @@ RSpec.describe Backlogs::StoryMenuListComponent, type: :component do
       .and_return("story_types" => [type_feature.id.to_s], "task_type" => type_task.id.to_s)
   end
 
-  def render_component(position: 2, max_position: 3)
+  def render_component(position: 2, max_position: 3, open_sprints_exist: true)
     story.update!(position:)
-    render_inline(described_class.new(story:, sprint:, project:, max_position:, current_user: user))
+    render_inline(described_class.new(story:,
+                                      sprint:,
+                                      project:,
+                                      max_position:,
+                                      current_user: user,
+                                      open_sprints_exist:))
   end
 
   describe "standard items" do
@@ -164,6 +169,13 @@ RSpec.describe Backlogs::StoryMenuListComponent, type: :component do
       expect(page).to have_text(I18n.t(:label_sort_lowest))
       expect(page).to have_octicon(:"move-to-bottom")
     end
+
+    it "shows Move to sprint item with zap icon" do
+      render_component
+
+      expect(page).to have_text(I18n.t("backlogs.story_menu_list_component.action_menu.move_to_sprint"))
+      expect(page).to have_octicon(:zap)
+    end
   end
 
   describe "position logic" do
@@ -210,18 +222,41 @@ RSpec.describe Backlogs::StoryMenuListComponent, type: :component do
       end
     end
 
-    context "when there is only one item (position=1, max=1)" do
-      it "hides all move options" do
+    context "when there is only one item (position=1, max=1), but there are other sprints" do
+      it "hides all move item options, but shows Move to sprint" do
         render_component(position: 1, max_position: 1)
 
         expect(page).to have_no_text(I18n.t(:label_sort_highest))
         expect(page).to have_no_text(I18n.t(:label_sort_higher))
         expect(page).to have_no_text(I18n.t(:label_sort_lower))
         expect(page).to have_no_text(I18n.t(:label_sort_lowest))
+
+        expect(page).to have_text(I18n.t("backlogs.story_menu_list_component.action_menu.move_to_sprint"))
+      end
+
+      it "shows the Move submenu" do
+        render_component(position: 1, max_position: 1)
+
+        expect(page).to have_selector(
+          :menuitem,
+          text: "Move"
+        )
+      end
+    end
+
+    context "when there is only one item (position=1, max=1) and no other sprints" do
+      it "hides all move options" do
+        render_component(position: 1, max_position: 1, open_sprints_exist: false)
+
+        expect(page).to have_no_text(I18n.t(:label_sort_highest))
+        expect(page).to have_no_text(I18n.t(:label_sort_higher))
+        expect(page).to have_no_text(I18n.t(:label_sort_lower))
+        expect(page).to have_no_text(I18n.t(:label_sort_lowest))
+        expect(page).to have_no_text(I18n.t("backlogs.story_menu_list_component.action_menu.move_to_sprint"))
       end
 
       it "hides the Move submenu" do
-        render_component(position: 1, max_position: 1)
+        render_component(position: 1, max_position: 1, open_sprints_exist: false)
 
         expect(page).to have_no_selector(
           :menuitem,

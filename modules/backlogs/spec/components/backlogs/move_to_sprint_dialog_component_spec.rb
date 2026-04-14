@@ -36,7 +36,7 @@ RSpec.describe Backlogs::MoveToSprintDialogComponent, type: :component do
   let(:move_path) { Rails.application.routes.url_helpers.move_project_inbox_path(project, work_package) }
 
   def render_component
-    render_inline(described_class.new(work_package:, project:))
+    render_inline(described_class.new(work_package:, project:, move_action: move_path))
   end
 
   it "renders the dialog with the correct title" do
@@ -50,6 +50,17 @@ RSpec.describe Backlogs::MoveToSprintDialogComponent, type: :component do
 
     expect(page).to have_element(:form, action: move_path, method: "post")
     expect(page).to have_css("form[action='#{move_path}'] input[name='_method'][value='put']", visible: :all)
+  end
+
+  context "when a different move action is passed" do
+    let(:move_path) { Rails.application.routes.url_helpers.move_project_sprint_story_path(project, 2, work_package) }
+
+    it "renders a form targeting the move action path via PUT" do
+      render_component
+
+      expect(page).to have_element(:form, action: move_path, method: "post")
+      expect(page).to have_css("form[action='#{move_path}'] input[name='_method'][value='put']", visible: :all)
+    end
   end
 
   it "renders Cancel and Save buttons" do

@@ -52,7 +52,8 @@ class InboxController < RbApplicationController
   def move_to_sprint_dialog
     respond_with_dialog Backlogs::MoveToSprintDialogComponent.new(
       work_package: @work_package,
-      project: @project
+      project: @project,
+      move_action: move_project_inbox_path(@project, @work_package)
     )
   end
 

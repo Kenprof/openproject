@@ -103,7 +103,7 @@ module OpenProject::Backlogs
                    visible: -> { OpenProject::FeatureDecisions.scrum_projects_active? }
 
         permission :manage_sprint_items,
-                   { rb_stories: %i[move move_legacy reorder],
+                   { rb_stories: %i[move move_legacy reorder move_to_sprint_dialog],
                      inbox: %i[move reorder move_to_sprint_dialog] },
                    permissible_on: :project,
                    require: :member,
