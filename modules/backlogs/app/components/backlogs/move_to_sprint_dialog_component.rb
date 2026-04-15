@@ -36,12 +36,11 @@ module Backlogs
     DIALOG_ID = "move-to-sprint-dialog"
     FORM_ID = "move-to-sprint-dialog-form"
 
-    attr_reader :work_package, :project, :sprints, :move_action
+    attr_reader :project, :sprints, :move_action
 
-    def initialize(work_package:, project:, move_action:)
+    def initialize(project:, move_action:)
       super()
 
-      @work_package = work_package
       @project = project
       @move_action = move_action
       @sprints = Agile::Sprint.for_project(@project).not_completed.order_by_date
