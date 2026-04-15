@@ -2013,6 +2013,7 @@ en:
         duration: "Duration"
         end_insertion: "End of the insertion"
         end_deletion: "End of the deletion"
+        identifier: "Identifier"
         ignore_non_working_days: "Ignore non working days"
         include_non_working_days:
           title: "Working days"
@@ -2361,6 +2362,8 @@ en:
               format: "%{message}"
               cannot_add_child_because_of_lack_of_permission: "Cannot add child because you don't have permissions to edit the selected work package."
               blank: "ID can't be blank."
+            identifier:
+              semantic_identifier_incomplete: "and sequence_number must both be set at the same time."
             assigned_to:
               format: "%{message}"
             done_ratio:
