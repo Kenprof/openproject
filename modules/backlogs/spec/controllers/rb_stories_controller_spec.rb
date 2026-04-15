@@ -386,6 +386,47 @@ RSpec.describe RbStoriesController do
     end
   end
 
+  describe "GET #move_to_sprint_dialog", with_flag: { scrum_projects: true } do
+    let(:agile_sprint) { create(:agile_sprint, name: "Agile Sprint load_story", project:) }
+    let(:work_package_in_sprint) { create(:work_package, status:, sprint: agile_sprint, project:) }
+
+    subject do
+      get :move_to_sprint_dialog,
+          params: {
+            project_id: project.id,
+            sprint_id: agile_sprint.id,
+            id: work_package_in_sprint.id
+          },
+          format: :turbo_stream
+    end
+
+    context "when user has manage_sprint_items permission" do
+      it "responds with a dialog turbo stream", :aggregate_failures do
+        subject
+        expect(response).to be_successful
+        expect(response).to have_turbo_stream action: "dialog"
+      end
+    end
+
+    context "with a user lacking manage_sprint_items permission" do
+      let(:user) { create(:user, member_with_permissions: { project => %i[view_work_packages] }) }
+
+      it "responds with 404" do
+        subject
+        expect(response).to have_http_status :not_found
+      end
+    end
+
+    context "with a user lacking project permission" do
+      let(:user) { create(:user) }
+
+      it "responds with 404" do
+        subject
+        expect(response).to have_http_status :not_found
+      end
+    end
+  end
+
   describe "GET #menu" do
     subject do
       get :menu, params: { project_id: project.id, sprint_id: version_sprint.id, id: story.id }, format: :html
