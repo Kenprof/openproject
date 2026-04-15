@@ -787,22 +787,29 @@ export default class PageController extends Controller {
     formData.delete('fields[]');
 
     this.visibleFilters().forEach((field) => {
+      const operator = this.filterOperator(field);
+      const hasValues = this.syncFilterValues(formData, field);
+
+      if (operator && operator.arity > 0 && !hasValues) {
+        formData.delete(`operators[${field}]`);
+        return;
+      }
+
       formData.append('fields[]', field);
-      this.syncFilterOperator(formData, field);
-      this.syncFilterValues(formData, field);
+      this.syncFilterOperator(formData, field, operator?.value);
     });
   }
 
-  private syncFilterOperator(formData:FormData, field:string) {
+  private syncFilterOperator(formData:FormData, field:string, operatorValue?:string) {
     const name = `operators[${field}]`;
-    const operator = document.querySelector<HTMLSelectElement>(`[name="${name}"]`);
+    const selectedOperator = operatorValue ?? this.filterOperator(field)?.value;
 
-    if (!operator) {
+    if (!selectedOperator) {
       return;
     }
 
     formData.delete(name);
-    formData.append(name, operator.value);
+    formData.append(name, selectedOperator);
   }
 
   private syncFilterValues(formData:FormData, field:string) {
@@ -811,7 +818,7 @@ export default class PageController extends Controller {
 
     formData.delete(name);
     if (!filter) {
-      return;
+      return false;
     }
 
     const fields = Array.from(filter.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>('input, select, textarea'))
@@ -820,21 +827,23 @@ export default class PageController extends Controller {
 
     const nonEmptyFields = fields.filter((element) => element.value !== '');
     if (nonEmptyFields.length === 0) {
-      this.serializeFilterComponentValue(formData, filter, name);
-      return;
+      return this.serializeFilterComponentValue(formData, filter, name);
     }
 
+    let serializedValueCount = 0;
     nonEmptyFields.forEach((element) => {
       if (element instanceof HTMLSelectElement) {
         const selectedOptions = Array.from(element.selectedOptions);
 
         if (selectedOptions.length === 0) {
           formData.append(name, element.value);
+          serializedValueCount += 1;
           return;
         }
 
         selectedOptions.forEach((option) => {
           formData.append(name, option.value);
+          serializedValueCount += 1;
         });
 
         return;
@@ -845,7 +854,10 @@ export default class PageController extends Controller {
       }
 
       formData.append(name, element.value);
+      serializedValueCount += 1;
     });
+
+    return serializedValueCount > 0;
   }
 
   private serializeFilterComponentValue(formData:FormData, filter:HTMLElement, name:string) {
@@ -857,27 +869,49 @@ export default class PageController extends Controller {
 
     if (normalizedName === name && dateValue) {
       formData.append(name, dateValue);
-      return;
+      return true;
     }
 
     const autocompleter = filter.querySelector<HTMLElement>('[data-input-name][data-model]');
     const inputName = this.normalizeQuotedDatasetValue(autocompleter?.dataset.inputName);
 
     if (inputName !== name.replace(/\[\]$/, '')) {
-      return;
+      return false;
     }
 
     const parsedModel = this.parseQuotedJson(autocompleter?.dataset.model);
     if (!Array.isArray(parsedModel)) {
-      return;
+      return false;
     }
 
+    let serializedValueCount = 0;
     parsedModel
       .map((value) => this.autocompleterValueId(value))
       .filter((value):value is string => typeof value === 'string' && value.length > 0)
       .forEach((value) => {
         formData.append(name, value);
+        serializedValueCount += 1;
       });
+
+    return serializedValueCount > 0;
+  }
+
+  private filterOperator(field:string) {
+    const operatorName = `operators[${field}]`;
+    const operatorSelect = document.querySelector<HTMLSelectElement>(`[name="${operatorName}"]`);
+    const selectedValue = operatorSelect?.value;
+
+    if (!operatorSelect || !selectedValue) {
+      return undefined;
+    }
+
+    const selectedOption = operatorSelect.selectedOptions[0];
+    const arity = parseInt(selectedOption?.dataset.arity || '0', 10);
+
+    return {
+      value: selectedValue,
+      arity,
+    };
   }
 
   private autocompleterValueId(value:unknown) {

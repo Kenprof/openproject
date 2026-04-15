@@ -115,4 +115,25 @@ describe('Reporting PageController serialization', () => {
     expect(formDataValues(formData, 'fields[]')).toEqual(['missing']);
     expect(formDataValues(formData, 'values[missing][]')).toEqual([]);
   });
+
+  it('skips filters with required operators when no value is present', () => {
+    fixturesElement.innerHTML = `
+      <select name="operators[updated_on]">
+        <option value=">=d" data-arity="1" selected>>=d</option>
+      </select>
+      <li id="filter_updated_on">
+        <input type="text" name="values[updated_on][]" value="">
+      </li>
+    `;
+
+    spyOn(controller, 'visibleFilters').and.returnValue(['updated_on']);
+
+    const formData = new FormData();
+
+    privateController.syncActiveFilters(formData);
+
+    expect(formDataValues(formData, 'fields[]')).toEqual([]);
+    expect(formDataValues(formData, 'operators[updated_on]')).toEqual([]);
+    expect(formDataValues(formData, 'values[updated_on][]')).toEqual([]);
+  });
 });
