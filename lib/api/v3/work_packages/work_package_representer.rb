@@ -573,6 +573,7 @@ module API
         associated_resources :target_versions,
                              v3_path: :version,
                              representer: ::API::V3::Versions::VersionRepresenter,
+                             skip_render: ->(*) { !Setting.work_package_multiple_versions? },
                              setter: ->(fragment:, **) do
                                ids = parse_link_ids_from_fragment(fragment, :version)
                                represented.target_version_ids = ids
@@ -810,7 +811,8 @@ module API
            represented.cache_checksum,
            Setting.work_package_done_ratio,
            Setting.show_work_package_attachments,
-           Setting.feeds_enabled?]
+           Setting.feeds_enabled?,
+           Setting.work_package_multiple_versions?]
         end
 
         def load_complete_model(model)
