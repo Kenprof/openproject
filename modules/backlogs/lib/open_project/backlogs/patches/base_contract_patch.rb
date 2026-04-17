@@ -39,8 +39,19 @@ module OpenProject::Backlogs::Patches::BaseContractPatch
               permission: :manage_sprint_items
 
     validate :sprint_shared_with_project
+    validate :validate_sprint_is_assignable
+
+    def assignable_sprints
+      model.try(:assignable_sprints) if model.project
+    end
 
     private
+
+    def validate_sprint_is_assignable
+      if model.sprint_id && model.assignable_sprints.map(&:id).exclude?(model.sprint_id)
+        errors.add :sprint_id, :inclusion
+      end
+    end
 
     def sprint_shared_with_project
       return if model.sprint.nil? ||
