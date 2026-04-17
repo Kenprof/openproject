@@ -64,7 +64,7 @@ module OpenProject::Backlogs::Patches::WorkPackagePatch
     end
 
     def assignable_sprints
-      Agile::Sprint.for_project(project).visible.not_completed
+      project.try(:assignable_sprints)
     end
   end
 end
