@@ -48,7 +48,7 @@ module Backlogs
              layout: false)
     end
 
-    # Move a story from an Agile::Sprint to another Agile::Sprint, or the Inbox.
+    # Move a story from an Sprint to another Sprint, or the Inbox.
     def move
       # The update service reloads the story internally (via #move_after),
       # so we memoize the previous sprint_id before the call.

@@ -43,7 +43,7 @@ module Backlogs
 
       @work_package = work_package
       @project = project
-      @sprints = Agile::Sprint.for_project(@project).not_completed.order_by_date
+      @sprints = Sprint.for_project(@project).not_completed.order_by_date
     end
   end
 end
