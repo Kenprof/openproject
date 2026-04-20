@@ -28,33 +28,16 @@
 # See COPYRIGHT and LICENSE files for more details.
 #++
 
-module Wikis
-  module Adapters
-    module Providers
-      module Internal
-        Registry = Dry::Container::Namespace.new("internal") do
-          namespace("authentication") do
-            # ...
-          end
+require "dry/container/stub"
+require "dry/monads"
 
-          namespace("commands") do
-            # ...
-          end
+RSpec.configure do |config|
+  config.include Dry::Monads[:result]
 
-          namespace("components") do
-            # ...
-          end
-
-          namespace("contracts") do
-            # ...
-          end
-
-          namespace("queries") do
-            register(:test, Queries::Test)
-            register(:pages, Queries::Test)
-          end
-        end
-      end
-    end
+  config.prepend_before do
+    Wikis::Adapters::Registry.enable_stubs!
+  end
+  config.append_after do
+    Wikis::Adapters::Registry.unstub
   end
 end
