@@ -32,18 +32,29 @@ See COPYRIGHT and LICENSE files for more details.
     render Primer::OpenProject::SubHeader.new do |subheader|
       if @type && @available_roles.any?
         subheader.with_filter_component do
-          render(Primer::Alpha::ActionMenu.new(select_variant: :single)) do |menu|
-            menu.with_show_button(scheme: :secondary) do |button|
+          render(
+            Primer::Alpha::SelectPanel.new(
+              select_variant: :multiple,
+              fetch_strategy: :local,
+              title: t("admin.workflows.role_selector.title"),
+              data: data_attributes
+            )
+          ) do |panel|
+            panel.with_show_button(scheme: :secondary) do |button|
               button.with_trailing_visual_icon(icon: :"triangle-down")
-              @role ? t("admin.workflows.role_selector.label", role: @role.name) : t("admin.workflows.role_selector.no_role")
+              if @roles.many?
+                t("admin.workflows.role_selector.roles", count: @roles.size)
+              elsif @role
+                t("admin.workflows.role_selector.label", role: @role.name)
+              else
+                t("admin.workflows.role_selector.no_role")
+              end
             end
             @available_roles.each do |available_role|
-              menu.with_item(
+              panel.with_item(
                 label: available_role.name,
-                active: available_role == @role,
-                tag: :a,
-                href: helpers.edit_workflow_path(@type, role_id: available_role.id, tab: @tab),
-                content_arguments: { data: { "admin--workflow-checkbox-state-confirmation-trigger": "click" }, target: "_top" }
+                active: @roles.include?(available_role),
+                item_id: available_role.id
               )
             end
           end
@@ -76,7 +87,9 @@ See COPYRIGHT and LICENSE files for more details.
           }
         ) do %>
         <%= hidden_field_tag "type_id", @type.id %>
-        <%= hidden_field_tag "role_id", @role.id %>
+        <% @roles.each do |role| %>
+          <%= hidden_field_tag "role_ids[]", role.id %>
+        <% end %>
         <%= hidden_field_tag "tab", @tab %>
 
         <%= helpers.render_tabs helpers.workflow_tabs(@type) %>
@@ -94,7 +107,7 @@ See COPYRIGHT and LICENSE files for more details.
             Primer::OpenProject::FeedbackDialog.new(
               title: t("admin.workflows.leave_confirmation.title"),
               data: {
-                "admin--workflow-checkbox-state-target": "confirmationDialog",
+                "admin--workflow-checkbox-state-target": "confirmationDialog"
               }
             )
           ) do |dialog|

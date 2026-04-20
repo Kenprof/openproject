@@ -38,7 +38,7 @@ class Workflows::TabsController < ApplicationController
   before_action :set_type
   before_action :set_tab
   before_action :set_eligible_roles
-  before_action :set_role
+  before_action :set_roles
 
   def edit
     statuses_for_form
@@ -49,11 +49,18 @@ class Workflows::TabsController < ApplicationController
   end
 
   def update
-    call = Workflows::BulkUpdateService
-           .new(role: @role, type: @type, tab: @tab)
-           .call(permitted_status_params)
+    success = false
+    Workflow.transaction do
+      success = true
+      @roles.each do |role|
+        result = Workflows::BulkUpdateService.new(role:, type: @type, tab: @tab)
+                                             .call(permitted_status_params)
+        success = false unless result.success?
+      end
+      raise ActiveRecord::Rollback unless success
+    end
 
-    if call.success?
+    if success
       render_flash_message_via_turbo_stream(
         message: I18n.t(:notice_successful_update),
         scheme: :success
@@ -64,7 +71,7 @@ class Workflows::TabsController < ApplicationController
         update_via_turbo_stream(
           component: Workflows::StatusMatrixFormComponent.new(
             tab: @tab,
-            role: @role,
+            roles: @roles,
             type: @type,
             available_roles: @eligible_roles,
             statuses:,
@@ -120,7 +127,7 @@ class Workflows::TabsController < ApplicationController
       update_via_turbo_stream(
         component: Workflows::StatusMatrixFormComponent.new(
           tab: @tab,
-          role: @role,
+          roles: @roles,
           type: @type,
           available_roles: @eligible_roles,
           statuses:,
@@ -145,8 +152,9 @@ class Workflows::TabsController < ApplicationController
     @eligible_roles = Workflow.eligible_roles.order(:builtin, :position)
   end
 
-  def set_role
-    @role = @eligible_roles.find(params[:role_id])
+  def set_roles
+    @roles = @eligible_roles.where(id: params[:role_ids])
+    @role = @roles.first # Temporary fallback
   end
 
   def statuses_for_form
