@@ -130,9 +130,11 @@ export default class GenericDragAndDropController extends Controller {
         this.dragOriginSource = source;
         this.dragOriginNextSibling = el.nextElementSibling;
 
+        document.body.setAttribute('data-dragging', 'active');
         this.ariaPressedTarget(el)?.setAttribute('aria-pressed', 'true');
       })
       .on('dragend', (el) => {
+        document.body.removeAttribute('data-dragging');
         this.ariaPressedTarget(el)?.setAttribute('aria-pressed', 'false');
       })
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
