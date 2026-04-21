@@ -31,6 +31,7 @@
 module Backlogs
   class WorkPackagesController < BaseController
     include OpTurbo::ComponentStream
+    include Backlogs::Move
 
     before_action :load_story
 
@@ -130,19 +131,6 @@ module Backlogs
 
       # Update the target component so that the moved story shows up
       replace_sprint_component_via_turbo_stream(sprint: new_sprint)
-    end
-
-    def infer_attributes_from_target
-      target_type, target_id = move_params[:target_id].split(":")
-
-      case target_type
-      when "sprint"
-        { sprint_id: target_id }
-      when "inbox"
-        { sprint_id: nil }
-      else
-        raise ArgumentError, "target_type must include one of: sprint, inbox."
-      end
     end
 
     def target_sprint?(move_attributes)
