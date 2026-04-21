@@ -156,6 +156,12 @@ ul.SegmentedControl,
   .ActionListItem-label[class^="__hl_"], .ActionListItem-label[class*=" __hl_"]
     color: var(--control-fgColor-disabled) !important
 
+// hide hover when dragging with legacy Dragula implementation
+.Box-row--hover-gray,
+.Box-row--hover-blue
+  body[data-dragging="active"] &
+    background-color: unset
+
 .Box-row--focus-gray
   &:focus-visible
     background-color: var(--bgColor-muted)
@@ -169,6 +175,18 @@ ul.SegmentedControl,
 
 .Box-row:is(.Box-row--draggable)
   cursor: grab
+
+  &[data-dragging="mirror"]
+    background-color: var(--bgColor-default)
+    border: var(--borderWidth-default) solid var(--borderColor-default)
+    border-radius: var(--borderRadius-medium)
+    box-shadow: var(--shadow-floating-medium)
+    opacity: 1
+
+  &[data-dragging="source"]
+    opacity: 0.4
+    background-color: var(--bgColor-subtle)
+    box-shadow: inset 0 0 0 var(--borderColor-default) var(--borderColor-muted)
 
 // Apply the mobile styles as soon as the banner itself is small
 // Styles are copied from the PVC repo
