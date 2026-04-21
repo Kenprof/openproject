@@ -36,7 +36,7 @@ module Backlogs
 
     # Deferred ActionMenu items (Primer include-fragment).
     def menu
-      max_position = Backlog.inbox_for(project: @project).maximum(:position) || 0
+      max_position = WorkPackage.backlogs_inbox_for(project: @project).maximum(:position) || 0
       open_sprints_exist = Sprint.for_project(@project).visible.not_completed.exists?
 
       render(Backlogs::InboxMenuComponent.new(
@@ -90,7 +90,7 @@ module Backlogs
     end
 
     def replace_inbox_component_via_turbo_stream
-      work_packages = Backlog.inbox_for(project: @project)
+      work_packages = WorkPackage.backlogs_inbox_for(project: @project)
       replace_via_turbo_stream(
         component: Backlogs::InboxComponent.new(
           work_packages:,

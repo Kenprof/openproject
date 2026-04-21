@@ -1,4 +1,6 @@
-#-- copyright
+# frozen_string_literal: true
+
+# -- copyright
 # OpenProject is an open source project management software.
 # Copyright (C) the OpenProject GmbH
 #
@@ -24,31 +26,20 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 # See COPYRIGHT and LICENSE files for more details.
-#++
+# ++
 
-class Backlog
-  extend ActiveModel::Naming
+module WorkPackages::Scopes::BacklogsInboxFor
+  extend ActiveSupport::Concern
 
-  attr_accessor :sprint, :stories
-
-  delegate :id, to: :sprint, prefix: true
-
-  def self.inbox_for(project:)
-    WorkPackage
-      .visible
-      .with_status_open
-      .where(project:, sprint_id: nil)
-      .includes(:type)
-      .order_by_position
-      .order(WorkPackage.arel_table[:id].asc)
-  end
-
-  def initialize(sprint:, stories:)
-    @sprint = sprint
-    @stories = stories
-  end
-
-  def to_key
-    [sprint_id]
+  class_methods do
+    def backlogs_inbox_for(project:)
+      WorkPackage
+        .visible
+        .with_status_open
+        .where(project:, sprint_id: nil)
+        .includes(:type)
+        .order_by_position
+        .order(WorkPackage.arel_table[:id].asc)
+    end
   end
 end
