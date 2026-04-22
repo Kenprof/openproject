@@ -78,7 +78,11 @@ module Wikis
       def resolve_page(provider, identifier)
         return nil if provider.nil?
 
-        page_info = provider.resolve("queries.page_info").call(identifier:).value_or { return nil }
+        result = Wikis::Adapters::Input::PageInfo.build(identifier:).bind do |input|
+          provider.resolve("queries.page_info").call(input)
+        end
+
+        page_info = result.value_or { return nil }
 
         [page_info.title, page_info.href]
       end
