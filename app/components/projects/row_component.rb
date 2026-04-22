@@ -188,18 +188,7 @@ module Projects
     end
 
     def workspace_type_badge
-      return unless OpenProject::FeatureDecisions.portfolio_models_active?
-      # Only show icon and type for non-project workspaces
-      return unless project.workspace_type.in?(["portfolio", "program"])
-
-      render(Primer::Beta::Text.new(classes: "projects-table--name-description")) do
-        icon = render(Primer::Beta::Octicon.new(
-                        icon: helpers.workspace_icon(project.workspace_type),
-                        size: :xsmall
-                      ))
-
-        safe_join([icon, " ", I18n.t(:"label_#{project.workspace_type}")])
-      end
+      nil
     end
 
     def archived_label

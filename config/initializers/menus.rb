@@ -36,12 +36,7 @@ Redmine::MenuManager.map :top_menu do |menu|
             context: :modules,
             caption: I18n.t("label_portfolio_plural"),
             icon: "briefcase",
-            if: ->(_) {
-              OpenProject::FeatureDecisions.portfolio_models_active? &&
-                (User.current.logged? || !Setting.login_required?) &&
-                (User.current.allowed_globally?(:add_portfolios) ||
-                  Project.portfolio.allowed_to(User.current, :view_project).any?)
-            },
+            if: ->(_) { false },
             enterprise_feature: :portfolio_management
 
   # projects menu will be added by
@@ -197,17 +192,12 @@ Redmine::MenuManager.map :global_menu do |menu|
             caption: I18n.t("label_portfolio_plural"),
             icon: "briefcase",
             after: :my_page,
-            if: ->(_) {
-              OpenProject::FeatureDecisions.portfolio_models_active? &&
-                (User.current.logged? || !Setting.login_required?) &&
-                (User.current.allowed_globally?(:add_portfolios) ||
-                  Project.portfolio.allowed_to(User.current, :view_project).any?)
-            },
+            if: ->(_) { false },
             enterprise_feature: :portfolio_management
 
   menu.push :portfolios_query_select,
             { controller: "/portfolios", action: "index" },
-            if: ->(_) { EnterpriseToken.allows_to?(:portfolio_management) },
+            if: ->(_) { false },
             parent: :portfolios,
             partial: "portfolios/menus/menu"
 
@@ -216,7 +206,7 @@ Redmine::MenuManager.map :global_menu do |menu|
             { controller: "/projects", project_id: nil, action: "index" },
             caption: I18n.t("label_projects_menu"),
             icon: "project",
-            after: :portfolios,
+            after: :my_page,
             if: ->(_) {
               User.current.logged? || !Setting.login_required?
             }
