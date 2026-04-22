@@ -74,6 +74,10 @@ module API
                 work_package = WorkPackage.visible.find_by(id: parsed_params.work_package_id)
                 work_package.lock_version = parsed_params.lock_version
 
+                unless custom_action.conditions_fulfilled?(work_package, current_user)
+                  raise ::API::Errors::Unauthorized
+                end
+
                 ::CustomActions::UpdateWorkPackageService
                   .new(user: current_user,
                        action: custom_action)
