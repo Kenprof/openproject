@@ -15,48 +15,12 @@ env:
 
 jobs:
   deploy:
-    name: Build and deploy production
+    name: Deploy to production
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: cd frontend && npm ci
-
-      - name: Create database config
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_DATABASE: ${{ secrets.DB_DATABASE }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        run: |
-          cat > config/database.yml <<'DByml'
-          production:
-            adapter: postgresql
-            encoding: unicode
-            pool: 20
-            host: <%= ENV.fetch("DB_HOST", "localhost") %>
-            port: <%= ENV.fetch("DB_PORT", 5432) %>
-            database: <%= ENV.fetch("DB_DATABASE", "openproject") %>
-            username: <%= ENV.fetch("DB_USERNAME", "openproject") %>
-            password: <%= ENV.fetch("DB_PASSWORD", "") %>
-          DByml
-          sed -i 's/^          //' config/database.yml
 
       - name: Create production .env
         env:
@@ -93,11 +57,20 @@ jobs:
 
           sed -i 's/^          //' .env
 
-      - name: Precompile assets
-        run: bundle exec rails assets:precompile
-        env:
-          RAILS_ENV: production
-          SECRET_KEY_BASE: placeholder-for-precompile
+      - name: Create database config
+        run: |
+          cat > config/database.yml <<'DByml'
+          production:
+            adapter: postgresql
+            encoding: unicode
+            pool: 20
+            host: <%= ENV.fetch("DB_HOST", "localhost") %>
+            port: <%= ENV.fetch("DB_PORT", 5432) %>
+            database: <%= ENV.fetch("DB_DATABASE", "openproject") %>
+            username: <%= ENV.fetch("DB_USERNAME", "openproject") %>
+            password: <%= ENV.fetch("DB_PASSWORD", "") %>
+          DByml
+          sed -i 's/^          //' config/database.yml
 
       - name: Configure SSH
         env:
@@ -167,7 +140,10 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "$STAGING_PORT" \
             "${STAGING_USER}@${STAGING_HOST}" \
             "cd ${DEPLOY_PATH} && \
+             bundle install --without development test && \
+             cd frontend && npm ci && cd .. && \
              bundle exec rails db:migrate RAILS_ENV=production && \
+             bundle exec rails assets:precompile RAILS_ENV=production && \
              sudo /bin/systemctl restart openproject && \
              sudo /bin/systemctl status openproject --no-pager"
 
