@@ -98,7 +98,7 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$STAGING_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "$STAGING_PORT" "$STAGING_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "$STAGING_PORT" "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
           # Create SSH config for simpler commands
           cat >> ~/.ssh/config <<EOF
