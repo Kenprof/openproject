@@ -108,6 +108,8 @@ jobs:
             Port ${STAGING_PORT}
             IdentityFile ~/.ssh/deploy_key
             StrictHostKeyChecking no
+            ServerAliveInterval 15
+            ServerAliveCountMax 10
           EOF
           chmod 600 ~/.ssh/config
 
@@ -183,11 +185,17 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
 
-            # Run database migrations
-            docker compose exec -T web bundle exec rails db:migrate RAILS_ENV=production
-
             # Cleanup old images
             docker image prune -f
+          "
+
+      - name: Run database migrations
+        run: |
+          set -euo pipefail
+
+          ssh deploy-target "
+            cd ${DEPLOY_PATH}
+            docker compose exec -T web bundle exec rails db:migrate RAILS_ENV=production
           "
 
       - name: Verify health

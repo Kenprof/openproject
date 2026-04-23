@@ -1,5 +1,3 @@
-version: "3.8"
-
 x-op-restart-policy: &restart-policy
   restart: unless-stopped
 
