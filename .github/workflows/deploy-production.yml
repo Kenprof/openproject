@@ -108,6 +108,7 @@ jobs:
             Port ${STAGING_PORT}
             IdentityFile ~/.ssh/deploy_key
             StrictHostKeyChecking no
+            ConnectTimeout 60
             ServerAliveInterval 15
             ServerAliveCountMax 10
           EOF
@@ -119,6 +120,7 @@ jobs:
           echo '${{ secrets.GITHUB_TOKEN }}' > /tmp/ghcr_token
 
       - name: Upload compose files and deploy
+        timeout-minutes: 10
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_DATABASE: ${{ secrets.DB_DATABASE }}
@@ -133,6 +135,19 @@ jobs:
           FULL_IMAGE_NAME: ${{ needs.build.outputs.image_name }}
         run: |
           set -euo pipefail
+
+          # Wait for SSH to be available (in case another deploy is running)
+          for attempt in $(seq 1 10); do
+            if ssh -o ConnectTimeout=30 deploy-target "echo 'SSH connected'"; then
+              break
+            fi
+            if [ "$attempt" -eq 10 ]; then
+              echo "::error::Could not connect to server after 10 attempts"
+              exit 1
+            fi
+            echo "SSH not available, retrying in 30s (attempt $attempt/10)..."
+            sleep 30
+          done
 
           # Create deploy directory
           ssh deploy-target "mkdir -p '${DEPLOY_PATH}'"
