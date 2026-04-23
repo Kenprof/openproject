@@ -38,11 +38,25 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
-      - name: Precompile assets
-        run: bundle exec rails assets:precompile
+      - name: Create database config
         env:
-          RAILS_ENV: production
-          SECRET_KEY_BASE: placeholder-for-precompile
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          cat > config/database.yml <<'DByml'
+          production:
+            adapter: postgresql
+            encoding: unicode
+            pool: 20
+            host: <%= ENV.fetch("DB_HOST", "localhost") %>
+            port: <%= ENV.fetch("DB_PORT", 5432) %>
+            database: <%= ENV.fetch("DB_DATABASE", "openproject") %>
+            username: <%= ENV.fetch("DB_USERNAME", "openproject") %>
+            password: <%= ENV.fetch("DB_PASSWORD", "") %>
+          DByml
+          sed -i 's/^          //' config/database.yml
 
       - name: Create production .env
         env:
@@ -77,8 +91,13 @@ jobs:
           SECRET_KEY_BASE=$(openssl rand -hex 64)
           ENVFILE
 
-          # Remove leading whitespace from heredoc
           sed -i 's/^          //' .env
+
+      - name: Precompile assets
+        run: bundle exec rails assets:precompile
+        env:
+          RAILS_ENV: production
+          SECRET_KEY_BASE: placeholder-for-precompile
 
       - name: Configure SSH
         env:
