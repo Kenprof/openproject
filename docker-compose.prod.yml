@@ -10,7 +10,7 @@ x-op-logging: &default-logging
 
 services:
   web:
-    image: ghcr.io/${COMPOSE_PROJECT_IMAGE:-kenprof/openproject}:${IMAGE_TAG:-latest}
+    image: ${COMPOSE_PROJECT_IMAGE}:${IMAGE_TAG:-latest}
     <<: [*restart-policy, *default-logging]
     environment:
       DATABASE_URL: "postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_DATABASE}"
@@ -42,7 +42,7 @@ services:
           memory: 2G
 
   worker:
-    image: ghcr.io/${COMPOSE_PROJECT_IMAGE:-kenprof/openproject}:${IMAGE_TAG:-latest}
+    image: ${COMPOSE_PROJECT_IMAGE}:${IMAGE_TAG:-latest}
     <<: [*restart-policy, *default-logging]
     command: ["./docker/prod/worker"]
     environment:
@@ -57,7 +57,7 @@ services:
           memory: 1G
 
   hocuspocus:
-    image: ghcr.io/${COMPOSE_PROJECT_IMAGE:-kenprof/openproject}:${IMAGE_TAG:-latest}
+    image: ${COMPOSE_PROJECT_IMAGE}:${IMAGE_TAG:-latest}
     <<: [*restart-policy, *default-logging]
     command: ["./docker/prod/hocuspocus"]
     environment:

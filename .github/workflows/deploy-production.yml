@@ -167,27 +167,19 @@ jobs:
           # Upload GHCR token
           scp /tmp/ghcr_token "deploy-target:/tmp/ghcr_token"
 
-      - name: Pull and restart containers
+      - name: Login to GHCR on server
         env:
           GH_ACTOR: ${{ github.actor }}
         run: |
-          set -euo pipefail
+          ssh deploy-target "cat /tmp/ghcr_token | docker login ghcr.io -u '${GH_ACTOR}' --password-stdin && rm -f /tmp/ghcr_token"
 
-          ssh deploy-target "
-            set -euo pipefail
-            cd ${DEPLOY_PATH}
+      - name: Pull new images
+        run: |
+          ssh deploy-target "cd ${DEPLOY_PATH} && docker compose pull"
 
-            # Login to GHCR using token file
-            cat /tmp/ghcr_token | docker login ghcr.io -u '${GH_ACTOR}' --password-stdin
-            rm -f /tmp/ghcr_token
-
-            # Pull new image and restart
-            docker compose pull
-            docker compose up -d --remove-orphans
-
-            # Cleanup old images
-            docker image prune -f
-          "
+      - name: Restart containers
+        run: |
+          ssh deploy-target "cd ${DEPLOY_PATH} && docker compose up -d --remove-orphans && docker image prune -f"
 
       - name: Run database migrations
         run: |
