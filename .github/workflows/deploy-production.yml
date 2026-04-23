@@ -11,66 +11,64 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
   DEPLOY_PATH: /var/sites/project-management
 
 jobs:
-  deploy:
-    name: Deploy to production
+  build:
+    name: Build and push Docker image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create production .env
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_DATABASE: ${{ secrets.DB_DATABASE }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          SMTP_ADDRESS: ${{ secrets.SMTP_ADDRESS }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_DOMAIN: ${{ secrets.SMTP_DOMAIN }}
-          SMTP_USER_NAME: ${{ secrets.SMTP_USER_NAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-        run: |
-          set -euo pipefail
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-          cat > .env <<ENVFILE
-          RAILS_ENV=production
-          DATABASE_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_DATABASE}
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-          DB_HOST=${DB_HOST}
-          DB_PORT=5432
-          DB_USERNAME=${DB_USERNAME}
-          DB_PASSWORD=${DB_PASSWORD}
-          DB_DATABASE=${DB_DATABASE}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
 
-          SMTP_ADDRESS=${SMTP_ADDRESS}
-          SMTP_PORT=${SMTP_PORT}
-          SMTP_DOMAIN=${SMTP_DOMAIN}
-          SMTP_USER_NAME=${SMTP_USER_NAME}
-          SMTP_PASSWORD=${SMTP_PASSWORD}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/prod/Dockerfile
+          target: slim
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-          SECRET_KEY_BASE=$(openssl rand -hex 64)
-          ENVFILE
+  deploy:
+    name: Deploy to production
+    needs: build
+    runs-on: ubuntu-latest
 
-          sed -i 's/^          //' .env
-
-      - name: Create database config
-        run: |
-          cat > config/database.yml <<'DByml'
-          production:
-            adapter: postgresql
-            encoding: unicode
-            pool: 20
-            host: <%= ENV.fetch("DB_HOST", "localhost") %>
-            port: <%= ENV.fetch("DB_PORT", 5432) %>
-            database: <%= ENV.fetch("DB_DATABASE", "openproject") %>
-            username: <%= ENV.fetch("DB_USERNAME", "openproject") %>
-            password: <%= ENV.fetch("DB_PASSWORD", "") %>
-          DByml
-          sed -i 's/^          //' config/database.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Configure SSH
         env:
@@ -81,25 +79,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "$STAGING_HOST" ]; then
-            echo "::error::STAGING_HOST secret is required."
-            exit 1
-          fi
-
-          if [ -z "$STAGING_USER" ]; then
-            echo "::error::STAGING_USER secret is required."
-            exit 1
-          fi
-
-          if [ -z "$STAGING_PORT" ]; then
-            echo "::error::STAGING_SSH_PORT organization secret is required."
-            exit 1
-          fi
-
-          if [ -z "$STAGING_SSH_PRIVATE_KEY" ]; then
-            echo "::error::STAGING_SSH_PRIVATE_KEY organization secret is required."
-            exit 1
-          fi
+          for var in STAGING_HOST STAGING_USER STAGING_PORT STAGING_SSH_PRIVATE_KEY; do
+            if [ -z "${!var}" ]; then
+              echo "::error::${var} secret is required."
+              exit 1
+            fi
+          done
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -107,7 +92,55 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "$STAGING_PORT" "$STAGING_HOST" >> ~/.ssh/known_hosts
 
-      - name: Upload release
+      - name: Upload compose files and deploy
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SMTP_ADDRESS: ${{ secrets.SMTP_ADDRESS }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_DOMAIN: ${{ secrets.SMTP_DOMAIN }}
+          SMTP_USER_NAME: ${{ secrets.SMTP_USER_NAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+
+          SSH_TARGET="${STAGING_USER}@${STAGING_HOST}"
+          SSH_OPTS="-i ~/.ssh/deploy_key -p ${STAGING_PORT}"
+
+          # Create deploy directory
+          ssh ${SSH_OPTS} "$SSH_TARGET" "mkdir -p '${DEPLOY_PATH}'"
+
+          # Upload docker-compose file
+          scp ${SSH_OPTS} docker-compose.prod.yml "${SSH_TARGET}:${DEPLOY_PATH}/docker-compose.yml"
+
+          # Generate .env on the server
+          ssh ${SSH_OPTS} "$SSH_TARGET" "cat > ${DEPLOY_PATH}/.env" <<ENVFILE
+          COMPOSE_PROJECT_NAME=openproject
+          COMPOSE_PROJECT_IMAGE=$(echo '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG=${IMAGE_TAG}
+
+          DB_HOST=${DB_HOST}
+          DB_DATABASE=${DB_DATABASE}
+          DB_USERNAME=${DB_USERNAME}
+          DB_PASSWORD=${DB_PASSWORD}
+
+          SMTP_ADDRESS=${SMTP_ADDRESS}
+          SMTP_PORT=${SMTP_PORT}
+          SMTP_DOMAIN=${SMTP_DOMAIN}
+          SMTP_USER_NAME=${SMTP_USER_NAME}
+          SMTP_PASSWORD=${SMTP_PASSWORD}
+
+          SECRET_KEY_BASE=$(openssl rand -hex 64)
+          APP_PORT=8080
+          ENVFILE
+
+      - name: Pull and restart containers
         env:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
           STAGING_USER: ${{ secrets.STAGING_USER }}
@@ -118,34 +151,23 @@ jobs:
           SSH_TARGET="${STAGING_USER}@${STAGING_HOST}"
           SSH_OPTS="-i ~/.ssh/deploy_key -p ${STAGING_PORT}"
 
-          ssh ${SSH_OPTS} "$SSH_TARGET" "mkdir -p '${DEPLOY_PATH}'"
+          ssh ${SSH_OPTS} "$SSH_TARGET" "
+            set -euo pipefail
+            cd ${DEPLOY_PATH}
 
-          rsync -az --delete \
-            --exclude 'log/' \
-            --exclude 'tmp/' \
-            --exclude 'storage/' \
-            --exclude '.git/' \
-            --exclude 'node_modules/' \
-            -e "ssh ${SSH_OPTS}" \
-            ./ "${SSH_TARGET}:${DEPLOY_PATH}/"
+            # Login to GHCR
+            echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
 
-      - name: Post-deploy setup
-        env:
-          STAGING_HOST: ${{ secrets.STAGING_HOST }}
-          STAGING_USER: ${{ secrets.STAGING_USER }}
-          STAGING_PORT: ${{ secrets.STAGING_SSH_PORT }}
-        run: |
-          set -euo pipefail
+            # Pull new image and restart
+            docker compose pull
+            docker compose up -d --remove-orphans
 
-          ssh -i ~/.ssh/deploy_key -p "$STAGING_PORT" \
-            "${STAGING_USER}@${STAGING_HOST}" \
-            "cd ${DEPLOY_PATH} && \
-             bundle install --without development test && \
-             cd frontend && npm ci && cd .. && \
-             bundle exec rails db:migrate RAILS_ENV=production && \
-             bundle exec rails assets:precompile RAILS_ENV=production && \
-             sudo /bin/systemctl restart openproject && \
-             sudo /bin/systemctl status openproject --no-pager"
+            # Run database migrations
+            docker compose exec -T web bundle exec rails db:migrate RAILS_ENV=production
+
+            # Cleanup old images
+            docker image prune -f
+          "
 
       - name: Verify health
         env:
@@ -158,16 +180,17 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "$STAGING_PORT" \
             "${STAGING_USER}@${STAGING_HOST}" \
             "set -euo pipefail
-             for attempt in \$(seq 1 12); do
-               if curl --fail --silent --show-error --max-time 5 http://127.0.0.1:3000/health; then
+             for attempt in \$(seq 1 20); do
+               if curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8080/health; then
                  echo
                  echo 'Health check passed.'
                  exit 0
                fi
-               sleep 5
+               echo \"Waiting for app to start (attempt \$attempt/20)...\"
+               sleep 10
              done
 
              echo 'Health check failed.'
-             sudo /bin/systemctl status openproject --no-pager || true
-             sudo /usr/bin/journalctl -u openproject -n 120 --no-pager || true
+             cd ${DEPLOY_PATH}
+             docker compose logs --tail=100
              exit 1"

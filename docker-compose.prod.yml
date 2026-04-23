@@ -1,0 +1,71 @@
+version: "3.8"
+
+x-op-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-op-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  web:
+    image: ghcr.io/${COMPOSE_PROJECT_IMAGE:-kenprof/openproject}:${IMAGE_TAG:-latest}
+    <<: [*restart-policy, *default-logging]
+    environment:
+      DATABASE_URL: "postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_DATABASE}"
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
+      RAILS_ENV: production
+      RAILS_LOG_TO_STDOUT: "1"
+      RAILS_SERVE_STATIC_FILES: "1"
+      OPENPROJECT_HTTPS: "${OPENPROJECT_HTTPS:-false}"
+      OPENPROJECT_HOST__NAME: "${OPENPROJECT_HOST__NAME:-localhost}"
+      OPENPROJECT_HSTS: "${OPENPROJECT_HSTS:-true}"
+      SMTP_ADDRESS: "${SMTP_ADDRESS}"
+      SMTP_PORT: "${SMTP_PORT}"
+      SMTP_DOMAIN: "${SMTP_DOMAIN}"
+      SMTP_USER_NAME: "${SMTP_USER_NAME}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+    volumes:
+      - op_assets:/var/openproject/assets
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  worker:
+    image: ghcr.io/${COMPOSE_PROJECT_IMAGE:-kenprof/openproject}:${IMAGE_TAG:-latest}
+    <<: [*restart-policy, *default-logging]
+    command: ["./docker/prod/worker"]
+    environment:
+      DATABASE_URL: "postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_DATABASE}"
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
+      RAILS_ENV: production
+    volumes:
+      - op_assets:/var/openproject/assets
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  hocuspocus:
+    image: ghcr.io/${COMPOSE_PROJECT_IMAGE:-kenprof/openproject}:${IMAGE_TAG:-latest}
+    <<: [*restart-policy, *default-logging]
+    command: ["./docker/prod/hocuspocus"]
+    environment:
+      DATABASE_URL: "postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_DATABASE}"
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
+      RAILS_ENV: production
+
+volumes:
+  op_assets:
